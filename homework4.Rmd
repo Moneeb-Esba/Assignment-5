@@ -1,0 +1,304 @@
+---
+title: "HW4"
+author: "Moneeb Abu-Esba"
+date: "2024-03-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+2. For parts (a) through (c), indicate which of i. through iv. is correct. Justify your answer.
+(a) The lasso, relative to least squares, is:
+i. More fexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance.
+ii. More fexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease in bias.
+iii. Less fexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance.
+iv. Less fexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease in bias.
+
+The lasso relative to least squares is less flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance (answer iii). When the least squares estimates have excessively high variance, the lasso solution can yield a reduction in variance at the expense of a small increase in bias, and consequently can generate more accurate predictions.
+
+(b) Repeat (a) for ridge regression relative to least squares.
+
+Ridge regression relative to least squares is less flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance (answer iii). Ridge regression’s advantage over least squares is rooted in the bias-variance trade-off. As λ increases, the flexibility of the ridge regression fit decreases, leading to decreased variance but increased bias.
+
+(c) Repeat (a) for non-linear methods relative to least squares.
+
+Non-linear methods relative to least squares are more flexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease in bias (answer ii). Nonlinear methods are more flexible than least squares and are less biased.
+
+9. In this exercise, we will predict the number of applications received using the other variables in the College data set.
+(a) Split the data set into a training set and a test set.
+
+```{r}
+library(ISLR2)
+getwd()
+setwd("C:/Masters/Predictive Modeling")
+College<-read.csv("College.csv",header=TRUE)
+set.seed(1) 
+trainingindex<-sample(nrow(College), 0.75*nrow(College))
+head(trainingindex)
+```
+
+```{r}
+train<-College[trainingindex, ]
+test<-College[-trainingindex, ]
+dim(College)
+```
+```{r}
+dim(train)
+```
+```{r}
+dim(test)
+```
+
+(b) Fit a linear model using least squares on the training set, and report the test error obtained.
+
+```{r}
+lm.fit=lm(Apps~., data=train)
+summary(lm.fit)
+```
+```{r}
+lm.pred=predict(lm.fit, newdata=test)
+lm.err=mean((test$Apps-lm.pred)^2)
+lm.err
+
+```
+
+
+(c) Fit a ridge regression model on the training set, with λ chosen by cross-validation. Report the test error obtained.
+
+```{r}
+xtrain=model.matrix(Apps~., data=train[,-1])
+ytrain=train$Apps
+xtest=model.matrix(Apps~., data=test[,-1])
+ytest=test$Apps
+set.seed(1)
+library(glmnet)
+```
+```{r}
+ridge.fit=cv.glmnet(xtrain, ytrain, alpha=0)
+plot(ridge.fit)
+```
+```{r}
+ridge.lambda=ridge.fit$lambda.min
+ridge.lambda
+```
+
+```{r}
+ridge.pred=predict(ridge.fit, s=ridge.lambda, newx = xtest)
+ridge.err=mean((ridge.pred-ytest)^2)
+ridge.err
+```
+
+
+(d) Fit a lasso model on the training set, with λ chosen by cross validation. Report the test error obtained, along with the number of non-zero coefcient estimates.
+
+```{r}
+set.seed(1)
+lasso.fit=cv.glmnet(xtrain, ytrain, alpha=1)
+plot(lasso.fit)
+```
+```{r}
+lasso.lambda=lasso.fit$lambda.min
+lasso.lambda
+```
+```{r}
+lasso.pred=predict(lasso.fit, s=lasso.lambda, newx = xtest)
+lasso.err=mean((lasso.pred-ytest)^2)
+lasso.err
+```
+```{r}
+lasso.coeff=predict(lasso.fit, type="coefficients", s=lasso.lambda)[1:18,]
+lasso.coeff
+```
+
+(e) Fit a PCR model on the training set, with M chosen by cross validation. Report the test error obtained, along with the value of M selected by cross-validation.
+
+```{r}
+library(pls)
+pcr.fit=pcr(Apps~., data=train, scale=TRUE, validation="CV")
+validationplot(pcr.fit, val.type = "MSEP")
+```
+```{r}
+summary(pcr.fit)
+```
+```{r}
+pcr.pred=predict(pcr.fit, test, ncomp=10)
+pcr.err=mean((pcr.pred-test$Apps)^2)
+pcr.err
+```
+
+
+(f) Fit a PLS model on the training set, with M chosen by crossvalidation. Report the test error obtained, along with the value of M selected by cross-validation. 6.6 Exercises 287
+```{r}
+pls.fit=plsr(Apps~., data=train, scale=TRUE, validation="CV")
+validationplot(pls.fit, val.type = "MSEP")
+```
+```{r}
+summary(pls.fit)
+
+```
+
+```{r}
+pls.pred=predict(pls.fit, test, ncomp = 7)
+pls.err=mean((pls.pred-test$Apps)^2)
+pls.err
+```
+
+
+
+(g) Comment on the results obtained. How accurately can we predict the number of college applications received? Is there much diference among the test errors resulting from these fve approaches
+```{r}
+barplot(c(lm.err, ridge.err, lasso.err, pcr.err, pls.err), col="darkslategray1", xlab="Regression Methods", ylab="Test Error", main="Test Errors for All Methods", names.arg=c("OLS", "Ridge", "Lasso", "PCR", "PLS"))
+```
+```{r}
+avg.apps=mean(test$Apps)
+lm.r2=1-mean((lm.pred-test$Apps)^2)/mean((avg.apps-test$Apps)^2)
+lm.r2
+```
+```{r}
+ridge.r2=1-mean((ridge.pred-test$Apps)^2)/mean((avg.apps-test$Apps)^2)
+ridge.r2
+```
+```{r}
+lasso.r2=1-mean((lasso.pred-test$Apps)^2)/mean((avg.apps-test$Apps)^2)
+lasso.r2
+```
+```{r}
+pcr.r2=1-mean((pcr.pred-test$Apps)^2)/mean((avg.apps-test$Apps)^2)
+pcr.r2
+```
+```{r}
+pls.r2=1-mean((pls.pred-test$Apps)^2)/mean((avg.apps-test$Apps)^2)
+pls.r2
+```
+```{r}
+barplot(c(lm.r2, ridge.r2, lasso.r2, pcr.r2, pls.r2), col="darkslategray2", xlab="Regression Methods", ylab="Test R-Squared", main="Test R-Squared for All Methods", names.arg=c("OLS", "Ridge", "Lasso", "PCR", "PLS"))
+```
+
+
+
+11. We will now try to predict per capita crime rate in the Boston data set.
+(a) Try out some of the regression methods explored in this chapter, such as best subset selection, the lasso, ridge regression, and PCR. Present and discuss results for the approaches that you consider.
+
+```{r}
+getwd()
+setwd("C:/Masters/Predictive Modeling")
+Boston<-read.csv("Boston.csv",header=TRUE)
+set.seed(1)
+library(MASS)
+attach(Boston)
+```
+
+```{r}
+library(leaps)
+predict.regsubsets = function(object, newdata, id, ...) {
+    form = as.formula(object$call[[2]])
+    mat = model.matrix(form, newdata)
+    coefi = coef(object, id = id)
+    mat[, names(coefi)] %*% coefi
+}
+
+k = 10
+p = ncol(Boston) - 1
+folds = sample(rep(1:k, length = nrow(Boston)))
+cv.errors = matrix(NA, k, p)
+for (i in 1:k) {
+    best.fit = regsubsets(crim ~ ., data = Boston[folds != i, ], nvmax = p)
+    for (j in 1:p) {
+        pred = predict(best.fit, Boston[folds == i, ], id = j)
+        cv.errors[i, j] = mean((Boston$crim[folds == i] - pred)^2)
+    }
+}
+rmse.cv = sqrt(apply(cv.errors, 2, mean))
+plot(rmse.cv, pch = 19, type = "b")
+```
+```{r}
+summary(best.fit)
+
+```
+```{r}
+which.min(rmse.cv)
+```
+```{r}
+boston.bsm.err=(rmse.cv[which.min(rmse.cv)])^2
+boston.bsm.err
+```
+```{r}
+boston.x=model.matrix(crim~., data=Boston)[,-1]
+boston.y=Boston$crim
+boston.lasso=cv.glmnet(boston.x,boston.y,alpha=1, type.measure = "mse")
+plot(boston.lasso)
+```
+```{r}
+coef(boston.lasso)
+
+```
+```{r}
+boston.lasso.err=(boston.lasso$cvm[boston.lasso$lambda==boston.lasso$lambda.1se])
+boston.lasso.err
+```
+```{r}
+boston.ridge=cv.glmnet(boston.x, boston.y, type.measure = "mse", alpha=0)
+plot(boston.ridge)
+```
+```{r}
+coef(boston.ridge)
+
+```
+```{r}
+boston.ridge.err=boston.ridge$cvm[boston.ridge$lambda==boston.ridge$lambda.1se]
+boston.ridge.err
+```
+```{r}
+library(pls)
+boston.pcr=pcr(crim~., data=Boston, scale=TRUE, validation="CV")
+summary(boston.pcr)
+```
+
+(b) Propose a model (or set of models) that seem to perform well on this data set, and justify your answer. Make sure that you are evaluating model performance using validation set error, cross validation, or some other reasonable alternative, as opposed to using training error.
+
+As computed above, the model that has the lowest cross-validation error is the one chosen by the best subset selection method. This model had an MSE of 42.68613.
+
+(c) Does your chosen model involve all of the features in the dataset? Why or why not?
+
+The model that was chosen by Best Subset Selection only includes 9 variables. The variables that are included in this model are zn, indus, nox, dis, rad, ptratio, black, lstat, and medv. If the model were to include of the thrown-out features, more variation of the response would be present. For this particular problem, we are looking to have model prediction accuracy with low variance and low MSE.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
